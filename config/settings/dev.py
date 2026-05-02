@@ -1,5 +1,5 @@
-from nexora.settings.base import *
-from nexora.settings.base import env
+from config.settings.base import *
+from config.settings.base import env
 
 SECRET_KEY = env.str("SECRET_KEY")
 
