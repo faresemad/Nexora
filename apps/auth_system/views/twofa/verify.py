@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from ...exceptions import InvalidTOTPCode, PendingSessionExpired
 from ...serializers import Verify2FALoginSerializer
 from ...services import CookieService, JWTService, PendingSessionService, TOTPService
+from ...utils import get_or_create_2fa
 
 User = get_user_model()
 
@@ -41,23 +42,29 @@ class Verify2FALoginView(APIView):
         except User.DoesNotExist:
             raise PendingSessionExpired()
 
+        twofa = get_or_create_2fa(user)
+
         # --- TOTP path ---
-        if TOTPService.verify_code(user.totp_secret, code):
+        if TOTPService.verify_code(twofa.totp_secret, code):
             session_svc.delete_session(session_token)
             tokens = JWTService.generate_tokens(user)
             response = Response(
                 {"detail": "Login successful."},
                 status=status.HTTP_200_OK,
             )
-            CookieService.set_auth_cookies(response, tokens["access"], tokens["refresh"])
+            CookieService.set_auth_cookies(
+                response, tokens["access"], tokens["refresh"]
+            )
             return response
 
         # --- Backup code path ---
-        is_valid, updated_codes = TOTPService.consume_backup_code(user.backup_codes, code)
+        is_valid, updated_codes = TOTPService.consume_backup_code(
+            twofa.backup_codes, code
+        )
         if is_valid:
             session_svc.delete_session(session_token)
-            user.backup_codes = updated_codes
-            user.save(update_fields=["backup_codes"])
+            twofa.backup_codes = updated_codes
+            twofa.save(update_fields=["backup_codes"])
             tokens = JWTService.generate_tokens(user)
             response = Response(
                 {
@@ -67,7 +74,9 @@ class Verify2FALoginView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-            CookieService.set_auth_cookies(response, tokens["access"], tokens["refresh"])
+            CookieService.set_auth_cookies(
+                response, tokens["access"], tokens["refresh"]
+            )
             return response
 
         raise InvalidTOTPCode()

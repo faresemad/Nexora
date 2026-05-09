@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from ...authentication import CookieJWTAuthentication
 from ...exceptions import TwoFAAlreadyEnabled
 from ...services import TOTPService
+from ...utils import get_or_create_2fa
 
 
 class Setup2FAView(APIView):
@@ -27,12 +28,16 @@ class Setup2FAView(APIView):
 
     def post(self, request):
         user = request.user
-        if getattr(user, "is_2fa_enabled", False):
+
+        twofa = get_or_create_2fa(user)
+
+        if twofa.is_2fa_enabled:
             raise TwoFAAlreadyEnabled()
 
         secret = TOTPService.generate_secret()
-        user.totp_secret = secret
-        user.save(update_fields=["totp_secret"])
+
+        twofa.totp_secret = secret
+        twofa.save(update_fields=["totp_secret"])
 
         data = {
             "secret": secret,

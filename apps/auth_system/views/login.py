@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from ..exceptions import AccountDisabled, InvalidCredentials
 from ..serializers import LoginSerializer
 from ..services import CookieService, JWTService, PendingSessionService
+from ..utils import get_or_create_2fa
 
 
 class LoginView(APIView):
@@ -38,7 +39,9 @@ class LoginView(APIView):
         if not user.is_active:
             raise AccountDisabled()
 
-        if getattr(user, "is_2fa_enabled", False):
+        twofa = get_or_create_2fa(user)
+
+        if getattr(twofa, "is_2fa_enabled", False):
             session_token = PendingSessionService().create_session(user.pk)
             return Response(
                 {"requires_2fa": True, "session_token": session_token},

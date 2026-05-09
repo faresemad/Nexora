@@ -40,9 +40,6 @@ class CustomUser(AbstractUser):
         choices=AccountType.as_choices(),
         default=AccountType.BUYER,
     )
-    is_2fa_enabled = models.BooleanField(default=False)
-    totp_secret = models.CharField(max_length=255, null=True, blank=True)
-    backup_codes = models.JSONField(default=list, blank=True)
 
     objects = CustomUserManager()
 

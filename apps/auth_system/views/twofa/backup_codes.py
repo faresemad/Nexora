@@ -7,6 +7,7 @@ from ...authentication import CookieJWTAuthentication
 from ...exceptions import InvalidCredentials, TwoFANotEnabled
 from ...serializers import BackupCodeSerializer
 from ...services import TOTPService
+from ...utils import get_or_create_2fa
 
 
 class BackupCodesView(APIView):
@@ -20,13 +21,16 @@ class BackupCodesView(APIView):
 
     def get(self, request):
         user = request.user
-        if not getattr(user, "is_2fa_enabled", False):
+
+        twofa = get_or_create_2fa(user)
+
+        if twofa.is_2fa_enabled:
             raise TwoFANotEnabled()
 
         return Response(
             {
-                "backup_codes": user.backup_codes,
-                "count": len(user.backup_codes),
+                "backup_codes": twofa.backup_codes,
+                "count": len(twofa.backup_codes),
             },
             status=status.HTTP_200_OK,
         )
@@ -34,7 +38,9 @@ class BackupCodesView(APIView):
     def post(self, request):
         """Regenerate all backup codes. Irreversibly invalidates the old ones."""
         user = request.user
-        if not getattr(user, "is_2fa_enabled", False):
+        twofa = get_or_create_2fa(user)
+
+        if twofa.is_2fa_enabled:
             raise TwoFANotEnabled()
 
         serializer = BackupCodeSerializer(data=request.data)
@@ -44,8 +50,8 @@ class BackupCodesView(APIView):
             raise InvalidCredentials()
 
         new_codes = TOTPService.generate_backup_codes()
-        user.backup_codes = new_codes
-        user.save(update_fields=["backup_codes"])
+        twofa.backup_codes = new_codes
+        twofa.save(update_fields=["backup_codes"])
 
         return Response(
             {"detail": "Backup codes regenerated.", "backup_codes": new_codes},

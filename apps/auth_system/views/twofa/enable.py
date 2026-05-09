@@ -7,6 +7,7 @@ from ...authentication import CookieJWTAuthentication
 from ...exceptions import InvalidTOTPCode, SetupRequired, TwoFAAlreadyEnabled
 from ...serializers import Enable2FASerializer
 from ...services import TOTPService
+from ...utils import get_or_create_2fa
 
 
 class Enable2FAView(APIView):
@@ -24,21 +25,26 @@ class Enable2FAView(APIView):
 
     def post(self, request):
         user = request.user
-        if getattr(user, "is_2fa_enabled", False):
+
+        twofa = get_or_create_2fa(user)
+
+        if getattr(twofa, "is_2fa_enabled", False):
             raise TwoFAAlreadyEnabled()
-        if not getattr(user, "totp_secret", None):
+        if not getattr(twofa, "totp_secret", None):
             raise SetupRequired()
 
         serializer = Enable2FASerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if not TOTPService.verify_code(user.totp_secret, serializer.validated_data["code"]):
+        if not TOTPService.verify_code(
+            twofa.totp_secret, serializer.validated_data["code"]
+        ):
             raise InvalidTOTPCode()
 
         backup_codes = TOTPService.generate_backup_codes()
-        user.is_2fa_enabled = True
-        user.backup_codes = backup_codes
-        user.save(update_fields=["is_2fa_enabled", "backup_codes"])
+        twofa.is_2fa_enabled = True
+        twofa.backup_codes = backup_codes
+        twofa.save(update_fields=["is_2fa_enabled", "backup_codes"])
 
         return Response(
             {
