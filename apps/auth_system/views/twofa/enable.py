@@ -20,6 +20,7 @@ class Enable2FAView(APIView):
 
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = Enable2FASerializer
 
     def post(self, request):
         user = request.user

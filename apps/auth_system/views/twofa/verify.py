@@ -22,6 +22,7 @@ class Verify2FALoginView(APIView):
 
     authentication_classes = []
     permission_classes = [AllowAny]
+    serializer_class = Verify2FALoginSerializer
 
     def post(self, request):
         serializer = Verify2FALoginSerializer(data=request.data)
