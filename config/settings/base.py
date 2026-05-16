@@ -146,3 +146,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+# Email Settings
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@nexora.com")
+
+# Frontend URL
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
